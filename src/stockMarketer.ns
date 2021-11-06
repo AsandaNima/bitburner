@@ -25,7 +25,7 @@ const average = (arr) => arr.reduce((p, c) => p + c, 0) / arr.length
 function getMoney(ns) {
   return ns.getServerMoneyAvailable('home') - 300000
 }
-ns.stock.getForecast()
+
 function processTick(ns, stockSymbol) {
   const profitMargin = 0.05
   const minimumMoneyToInvest = 1000000
