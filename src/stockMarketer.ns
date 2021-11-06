@@ -19,7 +19,7 @@ const average = (arr) => arr.reduce((p, c) => p + c, 0) / arr.length
 function getMoney(ns) {
   return ns.getServerMoneyAvailable('home') - 300000
 }
-
+ns.stock.getForecast()
 function processTick(ns, stockSymbol) {
   const profitMargin = 0.05
   const minimumMoneyToInvest = 1000000
@@ -231,7 +231,7 @@ function processTick(ns, stockSymbol) {
 }
 
 export async function main(ns) {
-  //ns.disableLog('ALL')
+  ns.disableLog('ALL')
   let tickCounter = 1
   corpus = ns.getServerMoneyAvailable('home') - 1000000
 
@@ -255,7 +255,7 @@ export async function main(ns) {
     if (tickCounter % 50 === 0) {
       ns.tprint(`[${localeHHMMSS()}] Tick counter: ${tickCounter}, corpus: ${ns.nFormat(corpus, '$0.000a')}`)
     }
-    await ns.sleep(5995)
+    await ns.sleep(3000)
     tickCounter++
   }
 }
