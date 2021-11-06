@@ -1,15 +1,28 @@
-const baseUrl = 'https://raw.githubusercontent.com/moriakaice/bitburner/master/src/'
+const baseUrl = 'https://raw.githubusercontent.com/AsandaNima/bitburner/master/src/'
 const filesToDownload = [
+  'browserAutoHack.js',
+  'commitCrime.ns',
   'common.ns',
-  'mainHack.ns',
-  'spider.ns',
+  'contracter.ns',
+  'find.ns',
+  'gangFastAscender.ns',
+  'gangManager.ns',
+  'getCrimesData.ns',
+  'getCrimesData2.ns.js',
   'grow.ns',
   'hack.ns',
-  'weaken.ns',
-  'playerServers.ns',
+  'hackingMission.js',
+  'karmaReducer.ns',
   'killAll.ns',
+  'mainHack.ns',
+  'playerServers.ns',
+  'prepareGang.ns',
   'runHacking.ns',
-  'find.ns',
+  'sellAllStock.ns',
+  'spider.ns',
+  'stockMarketer.ns',
+  'stockMarketer4S.ns',
+  'weaken.ns',
 ]
 const valuesToRemove = ['BB_SERVER_MAP']
 
