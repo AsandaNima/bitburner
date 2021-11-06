@@ -236,7 +236,7 @@ export async function main(ns) {
   corpus = stock.getServerMoneyAvailable('home') - 1000000
 
   stockSymbols.forEach((stockSymbol) => {
-    const [sharesLong, avgPriceLong, sharesShort, avgPriceShort] = stock.getStockPosition(stockSymbol)
+    const [sharesLong, avgPriceLong, sharesShort, avgPriceShort] = stock.getPosition(stockSymbol)
 
     corpus += sharesLong * avgPriceLong + sharesShort * avgPriceShort
   })
