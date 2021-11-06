@@ -68,7 +68,7 @@ function processTick(ns, stockSymbol) {
         }
       }
 
-      const longSellValue = ns.sellStock(stockSymbol, 9999999999999999999999999)
+      const longSellValue = ns.stock.sell(stockSymbol, 9999999999999999999999999)
       if (longSellValue && profitTracker.volume) {
         const profit = profitTracker.volume * (longSellValue - profitTracker.value) - 200000
         corpus += profit
@@ -124,7 +124,7 @@ function processTick(ns, stockSymbol) {
         const moneyToInvest = firstInvests[stockSymbol] ? getMoney(ns) : Math.floor(corpus / 6)
         if (moneyToInvest > minimumMoneyToInvest) {
           let volume = Math.floor(moneyToInvest / ns.stock.getAskPrice(stockSymbol))
-          volume = Math.min(volume, ns.getMaxShares(stockSymbol))
+          volume = Math.min(volume, ns.stock.getMaxShares(stockSymbol))
 
           if (volume > 0) {
             const longBuyValue = ns.stock.buy(stockSymbol, volume)
@@ -185,7 +185,7 @@ function processTick(ns, stockSymbol) {
 
         const moneyToInvest = firstInvests[stockSymbol] ? getMoney(ns) : Math.floor(corpus / 6)
         if (moneyToInvest > minimumMoneyToInvest) {
-          let volume = Math.floor(moneyToInvest / stock.getStockBidPrice(stockSymbol))
+          let volume = Math.floor(moneyToInvest / ns.stock.getBidPrice(stockSymbol))
           volume = Math.min(volume, ns.stock.getMaxShares(stockSymbol))
 
           if (volume > 0) {
@@ -231,7 +231,7 @@ function processTick(ns, stockSymbol) {
 }
 
 export async function main(ns) {
-  ns.disableLog('ALL')
+  //ns.disableLog('ALL')
   let tickCounter = 1
   corpus = ns.getServerMoneyAvailable('home') - 1000000
 
