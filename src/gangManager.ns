@@ -46,9 +46,9 @@ const gangMemberNamesList = [
   'Boba Fett',
   'Thanos',
   'Terminator',
-  'Frank Costello',
-  'Hector Barbossa',
-  'Xenomorph',
+  'Tom',
+  'Jack',
+  'Gob',
 ]
 
 const equipmentTypes = ['Weapon', 'Armor', 'Vehicle', 'Rootkit', 'Augmentation']

@@ -22,7 +22,11 @@ export async function main(ns) {
     await ns.run('spider.ns', 1, 'mainHack.ns')
     await ns.sleep(3000)
     ns.tprint(`[${localeHHMMSS()}] Spawning playerServers.ns`)
-    ns.spawn('playerServers.ns', 1)
+    ns.run('playerServers.ns', 1)
+    ns.tprint(`[${localeHHMMSS()}] Spawning stock-master.ns`)
+    ns.spawn('stock-master.ns',1)
+    ns.tprint(`[${localeHHMMSS()}] Spawning hacknet-auto.ns`)
+    ns.spawn('hacknet-auto.script',1)
   } else {
     ns.tprint(`[${localeHHMMSS()}] Spawning spider.ns`)
     ns.spawn('spider.ns', 1, 'mainHack.ns')

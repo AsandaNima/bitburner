@@ -1,267 +1,142 @@
-const stockSymbols = ['ECP', 'MGCP', 'BLD', 'CLRK', 'OMTK',
-                      'FSIG', 'KGI', 'FLCM', 'STM', 'DCOMM',
-                      'HLS', 'VITA', 'ICRS', 'UNV', 'AERO', 
-                      'OMN', 'SLRS', 'GPH', 'NVMD', 'WDS', 
-                      'LXO', 'RHOC', 'APHE', 'SYSC', 'CTK', 
-                      'NTLK', 'OMGA', 'FNS', 'SGC', 'JGN', 
-                      'CTYS', 'MDYN', 'TITN']
-const avgTrackers = {}
-const profitTrackers = {}
-const risingTrackers = {}
-const firstInvests = {}
+let fracB = 0.3; //Fraction of assets to have as liquid before we consider buying more stock
+let fracH = 0.2; //Fraction of assets to retain as cash in hand when buying
+let commission = 100000; // Buy/sell commission. Expected profit must exceed this to buy anything.
+let runningProfit = 0.0; // We can keep track of how much we've earned since start.
+let buyThreshold = 0.0001; // When cash is plentiful, buy anything forecasted to earn better than a 0.01% return (1 Basis Point)
+let sellThreshold = 0.00001; // Sell anything forecasted to earn less than a 0.001% return (0.1 Basis Points)
+let lastLog = ""; // We update faster than the stock-market ticks, but we don't log anything unless there's been a change
 
-let corpus
-
-function localeHHMMSS(ms = 0) {
-  if (!ms) {
-    ms = new Date().getTime()
-  }
-
-  return new Date(ms).toLocaleTimeString()
+let _ns = null;
+let getPlayerMoney = () => _ns.getServerMoneyAvailable("home"); //ns.getPlayer().money;
+let log = (message, tprint = false) => {
+    _ns.print(message);
+    if (tprint) _ns.tprint(message);
 }
 
-const average = (arr) => arr.reduce((p, c) => p + c, 0) / arr.length
-
-function getMoney(ns) {
-  return ns.getServerMoneyAvailable('home') - 300000
+function refresh(ns, stocks, myStocks) {
+    let corpus = getPlayerMoney();
+    myStocks.length = 0;
+    for (const stock of stocks) {
+        const sym = stock.sym;
+        stock.buy = numShares => ns.stock.buy(sym, numShares);
+        stock.sell = numShares => ns.stock.sell(sym, numShares);
+        stock.price = ns.stock.getPrice(sym);
+        stock.maxShares = ns.stock.getMaxShares(sym);
+        stock.vol = ns.stock.getVolatility(sym);
+        stock.prob = ns.stock.getForecast(sym);
+        stock.position = ns.stock.getPosition(sym);
+        stock.shares = stock.position[0];
+        stock.buyPrice = stock.position[1];
+        stock.expRet = stock.vol * (stock.prob - 0.5);
+        corpus += stock.price * stock.shares;
+        if (stock.shares > 0) myStocks.push(stock);
+    }
+    stocks.sort(function (a, b) { return b.expRet - a.expRet });
+    return corpus;
 }
 
-function processTick(ns, stockSymbol) {
-  const profitMargin = 0.05
-  const minimumMoneyToInvest = 1000000
-  let profitTracker = profitTrackers[stockSymbol] || {}
-  let positionChanged = false
-  let avgTracker = avgTrackers[stockSymbol] || []
-  let rising = risingTrackers[stockSymbol]
-  avgTracker.push(ns.stock.getPrice(stockSymbol))
-  avgTracker = avgTracker.slice(-40)
-
-  if (avgTracker.length === 40) {
-    let profitPercentage
-    let profitMarginCrossed = false
-    const avg40 = average(avgTracker)
-    const avg10 = average(avgTracker.slice(-10))
-
-    if (profitTracker.volume && profitTracker.position) {
-      const stockSaleGain = ns.stock.getSaleGain(stockSymbol, profitTracker.volume, profitTracker.position)
-      profitPercentage = (stockSaleGain - profitTracker.volume * profitTracker.value) / (profitTracker.volume * profitTracker.value)
-
-      if (Math.abs(profitPercentage) > profitMargin) {
-        profitMarginCrossed = true
-      }
-    }
-
-    if (profitMarginCrossed) {
-      const shortSellValue = ns.stock.sellShort(stockSymbol, 9999999999999999999999999)
-      if (shortSellValue && profitTracker.volume) {
-        const profit = profitTracker.volume * (profitTracker.value - shortSellValue) - 200000
-        corpus += profit
-
-        const message = `[${localeHHMMSS()}] ${stockSymbol}, profitPercentage: ${ns.nFormat(profitPercentage, '0.0%')}, selling shorts,
-          profitTracker.volume: ${profitTracker.volume}, profitTracker.value: ${ns.nFormat(profitTracker.value, '$0.000a')},
-          shortSellValue: ${ns.nFormat(shortSellValue, '$0.000a')},
-          profit: ${ns.nFormat(profit, '$0.000a')}, corpus: ${ns.nFormat(corpus, '$0.000a')}`
-          .replace(/\r/g, '')
-          .replace(/\n/g, '')
-          .replace(/\s+/g, ' ')
-          .trim()
-        ns.tprint(message)
-
-        profitTracker = {
-          position: '',
-          value: 0,
-          volume: 0,
-        }
-      }
-
-      const longSellValue = ns.stock.sell(stockSymbol, 9999999999999999999999999)
-      if (longSellValue && profitTracker.volume) {
-        const profit = profitTracker.volume * (longSellValue - profitTracker.value) - 200000
-        corpus += profit
-
-        const message = `[${localeHHMMSS()}] ${stockSymbol}, profitPercentage: ${ns.nFormat(profitPercentage, '0.0%')}, selling longs,
-          profitTracker.volume: ${profitTracker.volume}, profitTracker.value: ${ns.nFormat(profitTracker.value, '$0.000a')},
-          longSellValue: ${ns.nFormat(longSellValue, '$0.000a')},
-          profit: ${ns.nFormat(profit, '$0.000a')}, corpus: ${ns.nFormat(corpus, '$0.000a')}`
-          .replace(/\r/g, '')
-          .replace(/\n/g, '')
-          .replace(/\s+/g, ' ')
-          .trim()
-        ns.tprint(message)
-
-        profitTracker = {
-          position: '',
-          value: 0,
-          volume: 0,
-        }
-      }
-    }
-
-    if (rising !== avg10 > avg40 || profitMarginCrossed) {
-      positionChanged = true
-      rising = avg10 > avg40
-    }
-
-    if (positionChanged) {
-      if (rising) {
-        // It's rising now, sell short, buy long
-        const shortSellValue = ns.stock.sellShort(stockSymbol, 9999999999999999999999999)
-        if (shortSellValue && profitTracker.volume) {
-          const profit = profitTracker.volume * (profitTracker.value - shortSellValue) - 200000
-          corpus += profit
-
-          const message = `[${localeHHMMSS()}] ${stockSymbol}, selling shorts,
-            profitTracker.volume: ${profitTracker.volume}, profitTracker.value: ${ns.nFormat(profitTracker.value, '$0.000a')},
-            shortSellValue: ${ns.nFormat(shortSellValue, '$0.000a')},
-            profit: ${ns.nFormat(profit, '$0.000a')}, corpus: ${ns.nFormat(corpus, '$0.000a')}`
-            .replace(/\r/g, '')
-            .replace(/\n/g, '')
-            .replace(/\s+/g, ' ')
-            .trim()
-          ns.tprint(message)
-
-          profitTracker = {
-            position: '',
-            value: 0,
-            volume: 0,
-          }
-        }
-
-        const moneyToInvest = firstInvests[stockSymbol] ? getMoney(ns) : Math.floor(corpus / 6)
-        if (moneyToInvest > minimumMoneyToInvest) {
-          let volume = Math.floor(moneyToInvest / ns.stock.getAskPrice(stockSymbol))
-          volume = Math.min(volume, ns.stock.getMaxShares(stockSymbol))
-
-          if (volume > 0) {
-            const longBuyValue = ns.stock.buy(stockSymbol, volume)
-
-            const message = `[${localeHHMMSS()}] ${stockSymbol}, buying longs,
-              volume: ${volume},
-              price per share: ${ns.nFormat(longBuyValue, '$0.000a')},
-              invested: ${ns.nFormat(volume * longBuyValue, '$0.000a')},
-              moneyToInvest: ${ns.nFormat(moneyToInvest, '$0.000a')},
-              corpus: ${ns.nFormat(corpus, '$0.000a')}`
-              .replace(/\r/g, '')
-              .replace(/\n/g, '')
-              .replace(/\s+/g, ' ')
-              .trim()
-            ns.tprint(message)
-
-            if (longBuyValue && volume) {
-              firstInvests[stockSymbol] = true
-              profitTracker = {
-                position: 'Long',
-                value: longBuyValue,
-                volume,
-              }
-            }
-          } else {
-            ns.tprint(`[${localeHHMMSS()}] ERROR #1: ${stockSymbol}, buying longs, volume: ${volume},
-              getMoney(ns): ${getMoney(ns)}, Math.floor(corpus / 6): ${Math.floor(corpus / 6)},
-              moneyToInvest: ${ns.nFormat(moneyToInvest, '$0.000a')}`)
-          }
-        } else {
-          ns.tprint(`[${localeHHMMSS()}] ERROR #2: ${stockSymbol}, buying longs,
-            getMoney(ns): ${getMoney(ns)}, Math.floor(corpus / 6): ${Math.floor(corpus / 6)},
-            moneyToInvest: ${ns.nFormat(moneyToInvest, '$0.000a')}`)
-        }
-      } else {
-        // It's falling now, sell long, buy short
-        const longSellValue = ns.stock.sell(stockSymbol, 9999999999999999999999999)
-        if (longSellValue && profitTracker.volume) {
-          const profit = profitTracker.volume * (longSellValue - profitTracker.value) - 200000
-          corpus += profit
-
-          const message = `[${localeHHMMSS()}] ${stockSymbol}, selling longs,
-            profitTracker.volume: ${profitTracker.volume}, profitTracker.value: ${ns.nFormat(profitTracker.value, '$0.000a')},
-            longSellValue: ${ns.nFormat(longSellValue, '$0.000a')},
-            profit: ${ns.nFormat(profit, '$0.000a')}, corpus: ${ns.nFormat(corpus, '$0.000a')}`
-            .replace(/\r/g, '')
-            .replace(/\n/g, '')
-            .replace(/\s+/g, ' ')
-            .trim()
-          ns.tprint(message)
-
-          profitTracker = {
-            position: '',
-            value: 0,
-            volume: 0,
-          }
-        }
-
-        const moneyToInvest = firstInvests[stockSymbol] ? getMoney(ns) : Math.floor(corpus / 6)
-        if (moneyToInvest > minimumMoneyToInvest) {
-          let volume = Math.floor(moneyToInvest / ns.stock.getBidPrice(stockSymbol))
-          volume = Math.min(volume, ns.stock.getMaxShares(stockSymbol))
-
-          if (volume > 0) {
-            const shortBuyValue = ns.stock.short(stockSymbol, volume)
-
-            const message = `[${localeHHMMSS()}] ${stockSymbol}, buying shorts,
-              volume: ${volume},
-              price per share: ${ns.nFormat(shortBuyValue, '$0.000a')},
-              invested: ${ns.nFormat(volume * shortBuyValue, '$0.000a')},
-              moneyToInvest: ${ns.nFormat(moneyToInvest, '$0.000a')},
-              corpus: ${ns.nFormat(corpus, '$0.000a')}`
-              .replace(/\r/g, '')
-              .replace(/\n/g, '')
-              .replace(/\s+/g, ' ')
-              .trim()
-            ns.tprint(message)
-
-            if (shortBuyValue && volume) {
-              firstInvests[stockSymbol] = true
-              profitTracker = {
-                position: 'Short',
-                value: shortBuyValue,
-                volume,
-              }
-            }
-          } else {
-            ns.tprint(`[${localeHHMMSS()}] ERROR #3: ${stockSymbol}, buying shorts, volume: ${volume},
-              getMoney(ns): ${getMoney(ns)}, Math.floor(corpus / 6): ${Math.floor(corpus / 6)},
-              moneyToInvest: ${ns.nFormat(moneyToInvest, '$0.000a')}`)
-          }
-        } else {
-          ns.tprint(`[${localeHHMMSS()}] ERROR #4: ${stockSymbol}, buying shorts,
-            getMoney(ns): ${getMoney(ns)}, Math.floor(corpus / 6): ${Math.floor(corpus / 6)},
-            moneyToInvest: ${ns.nFormat(moneyToInvest, '$0.000a')}`)
-        }
-      }
-    }
-  }
-
-  avgTrackers[stockSymbol] = avgTracker
-  profitTrackers[stockSymbol] = profitTracker
-  risingTrackers[stockSymbol] = rising
-}
-
+/**
+ * Requires access to the TIX API and the 4S Mkt Data API
+ */
 export async function main(ns) {
-  ns.disableLog('ALL')
-  let tickCounter = 1
-  corpus = ns.getServerMoneyAvailable('home') - 1000000
-
-  stockSymbols.forEach((stockSymbol) => {
-    const [sharesLong, avgPriceLong, sharesShort, avgPriceShort] = ns.stock.getPosition(stockSymbol)
-
-    corpus += sharesLong * avgPriceLong + sharesShort * avgPriceShort
-  })
-
-  ns.print(`[${localeHHMMSS()}] Tick counter: 1, corpus: ${ns.nFormat(corpus, '$0.000a')}`)
-  while (true) {
-    for (let i = 0; i < stockSymbols.length; i++) {
-      const stockSymbol = stockSymbols[i]
-      processTick(ns, stockSymbol)
-      await ns.sleep(1)
+    //Initialise
+    _ns = ns;
+    let corpus = 0;
+    let myStocks = [];
+    try {
+        let allStockSymbols = ns.stock.getSymbols();
+        var stocks = allStockSymbols.map(s => ({ sym: s }));
+    } catch (err) {
+        if (String(err).includes("WSE Access")) {
+            log("Cannot run without TIX API and the 4S Mkt Data API access.", true)
+            return;
+        }
+        throw (err);
     }
-    if (tickCounter % 10 === 0) {
-      ns.print(`[${localeHHMMSS()}] Tick counter: ${tickCounter}, corpus: ${ns.nFormat(corpus, '$0.000a')}`)
-    }
+    runningProfit = 0; // TODO: Find a way to remember earned profit between restarts, but not between Augmentations
+    lastLog = ""
+    ns.disableLog("ALL");
 
-    if (tickCounter % 50 === 0) {
-      ns.tprint(`[${localeHHMMSS()}] Tick counter: ${tickCounter}, corpus: ${ns.nFormat(corpus, '$0.000a')}`)
+    while (true) {
+        corpus = refresh(ns, stocks, myStocks);
+        doStatusUpdate(stocks, myStocks);
+
+        // Sell forecasted-to-underperform shares (worse than some expected return threshold)
+        for (let i = 0; i < myStocks.length; i++) {
+            if (myStocks[i].expRet < sellThreshold) {
+                sell(myStocks[i], myStocks[i].shares);
+                corpus -= commission;
+            }
+        }
+
+        let cash = getPlayerMoney();
+        let liquidity = cash / corpus;
+        // If we haven't gone above a certain liquidity threshold, don't attempt to buy more stock
+        // Avoids death-by-a-thousand-commissions before we get super-rich, stocks are capped, and this is no longer an issue
+        // BUT may mean we miss striking while the iron is hot while waiting to build up more funds.
+        // TODO: Remove, but have fracH scale with expected return, so unusually high returns are granted more cash, but low returns must reserve more cash
+        if (liquidity > fracB) {
+            // Buy shares with cash remaining in hand if exceeding some buy threshold
+            for (const stock of stocks) {
+                let maxShares = stock.maxShares;
+                let ownedShares = stock.shares;
+                // Skip if we already own all possible shares in this stock
+                // Skip if the forecasted expected return is below our threshold
+                if (ownedShares == maxShares || stock.expRet < buyThreshold)
+                    continue;
+
+                // Compute the cash we have to spend (such that spending it all on stock would bring us down to a liquidity of fracH)
+                let cashToSpend = cash - (fracH * corpus);
+                let affordableShares = Math.floor((cashToSpend - commission) / stock.price);
+                let numShares = Math.min(maxShares - ownedShares, affordableShares);
+                // Don't buy if we expect to make less than double the comission
+                if ((numShares * stock.expRet * stock.price) > 2 * commission)
+                    cash -= buy(stock, numShares);
+            }
+        }
+        await ns.sleep(1000);
     }
-    await ns.sleep(3000)
-    tickCounter++
-  }
+}
+
+function formatMoney(num, maxSignificantFigures = 6, maxDecimalPlaces = 3) {
+    const symbols = ["", "K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc"];
+    for (var i = 0, sign = Math.sign(num), num = Math.abs(num); num >= 1000 && i < symbols.length; i++) num /= 1000;
+    return ((sign < 0) ? "-$" : "$") + num.toFixed(Math.max(0, Math.min(maxDecimalPlaces, maxSignificantFigures - (num >= 100 ? 3 : num >= 10 ? 2 : 1)))) + symbols[i];
+}
+
+function doStatusUpdate(stocks, myStocks) {
+    let maxReturnBP = 10000 * Math.max(...myStocks.map(s => s.expRet)); // The largest return (in basis points) in our portfolio
+    let minReturnBP = 10000 * Math.min(...myStocks.map(s => s.expRet)); // The smallest return (in basis points) in our portfolio
+    let est_holdings_cost = myStocks.reduce((sum, stock) => sum + stock.shares * stock.buyPrice + (stock.shares > 0 ? commission : 0), 0);
+    let liquidation_value = myStocks.reduce((sum, stock) => sum + stock.shares * stock.price - (stock.shares > 0 ? commission : 0), 0);
+    let status = `Have ${myStocks.length} of ${stocks.length} stocks ` +
+        (myStocks.length == 0 ? '' : `(ER ${minReturnBP.toFixed(1)}-${maxReturnBP.toFixed(1)} BP) `) +
+        `Profit: ${formatMoney(runningProfit, 3)} Holdings: ${formatMoney(liquidation_value, 3)} (Cost: ${formatMoney(est_holdings_cost, 3)}) ` +
+        `Net: ${formatMoney(runningProfit + liquidation_value - est_holdings_cost, 3)}`
+    if (status != lastLog)
+        log(lastLog = status);
+}
+
+function buy(stock, numShares) {
+    // We include -2*commission in the "holdings value" of our stock, but if we make repeated purchases of the same stock, we have to track
+    // the additional commission somewhere. So only subtract it from our running profit if this isn't our first purchase of this symbol
+    if (stock.shares > 0)
+        runningProfit -= commission;
+    var price = stock.buy(numShares);
+    if (price > stock.price)
+        log(`WARNING: Intended to buy ${stock.sym} @ ${formatMoney(stock.price)} but price was ${formatMoney(price)}`);
+    log(`Bought ${numShares.toLocaleString()} ${stock.sym} @ ${formatMoney(price)} for ${formatMoney(numShares * price)} (ExpRet: ${(stock.expRet * 10000).toFixed(1)}BP)`,true);
+    stock.shares += numShares;
+    return numShares * price + commission; // Return the amount spent on the transaction so it can be subtracted from our cash on hand
+}
+
+function sell(stock, numShares) {
+    var price = stock.sell(numShares);
+    let profit = numShares * (price - stock.buyPrice) - 2 * commission;
+    runningProfit += profit + 2 * commission;
+    if (price < stock.price)
+        log(`WARNING: Intended to sell ${stock.sym} @ ${formatMoney(stock.price)} but price was ${formatMoney(price)}`);
+    log(`Sold ${numShares == stock.shares ? 'all' : ''} ${numShares.toLocaleString()} ${stock.sym} for ` +
+        (profit > 0 ? `profit of ${formatMoney(profit)}` : `LOSS of ${formatMoney(-profit)} (ExpRet: ${(stock.expRet * 10000).toFixed(1)}BP)`), true);
+    stock.shares -= numShares;
 }
