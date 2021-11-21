@@ -200,12 +200,12 @@ export async function main(ns) {
           }
         }
 
-        await ns.sleep(1)
+        await ns.asleep(1)
       }
 
       ns.tprint(`[${localeHHMMSS()}][${gangMemberName}][${i + 1}/${gangMemberNames.length}] ${counter} ascensions done, moving on`)
 
-      await ns.sleep(1)
+      await ns.asleep(1)
     }
 
     ns.tprint(`[${localeHHMMSS()}] Finished Basball Bat ascension`)
@@ -259,12 +259,12 @@ export async function main(ns) {
             }
           }
 
-          await ns.sleep(1)
+          await ns.asleep(1)
         }
 
         ns.tprint(`[${localeHHMMSS()}][${gangMemberName}][${i + 1}/${gangMemberNames.length}] ${counter} ascensions done, moving on`)
         myGangReputation = ns.gang.getGangInformation().respect
-        await ns.sleep(1)
+        await ns.asleep(1)
       }
 
       ns.tprint(`[${localeHHMMSS()}] Finished Dex ascension`)
@@ -338,12 +338,12 @@ export async function main(ns) {
             }
           }
 
-          await ns.sleep(1)
+          await ns.asleep(1)
         }
 
         ns.tprint(`[${localeHHMMSS()}][${gangMemberName}][${i + 1}/${gangMemberNames.length}] ${counter} ascensions done, moving on`)
         myGangReputation = ns.gang.getGangInformation().respect
-        await ns.sleep(1)
+        await ns.asleep(1)
       }
 
       ns.tprint(`[${localeHHMMSS()}] Finished full ascension`)

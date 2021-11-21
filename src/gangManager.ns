@@ -165,7 +165,7 @@ export async function main(ns) {
       const gangMemberNames = getMemberNames(ns)
       ns.gang.recruitMember(gangMemberNamesList[gangMemberNames.length])
       ns.tprint(`[${localeHHMMSS()}] Recruited ${gangMemberNamesList[gangMemberNames.length]}`)
-      await ns.sleep(1)
+      await ns.asleep(1)
     }
 
     const gangMemberNames = getMemberNames(ns)
@@ -329,6 +329,6 @@ export async function main(ns) {
       }
     })
 
-    await ns.sleep(2500)
+    await ns.asleep(2500)
   }
 }

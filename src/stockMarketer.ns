@@ -94,7 +94,7 @@ export async function main(ns) {
                     cash -= buy(stock, numShares);
             }
         }
-        await ns.sleep(1000);
+        await ns.asleep(1000);
     }
 }
 
