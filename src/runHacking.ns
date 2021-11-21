@@ -23,8 +23,10 @@ export async function main(ns) {
     await ns.sleep(3000)
     ns.tprint(`[${localeHHMMSS()}] Spawning playerServers.ns`)
     ns.run('playerServers.ns', 1)
+    await ns.sleep(100)
     ns.tprint(`[${localeHHMMSS()}] Spawning stock-master.ns`)
     ns.spawn('stock-master.ns',1)
+    await ns.sleep(100)
     ns.tprint(`[${localeHHMMSS()}] Spawning hacknet-auto.ns`)
     ns.spawn('hacknet-auto.script',1)
   } else {
