@@ -25,7 +25,7 @@ export async function main(ns) {
     ns.run('playerServers.ns', 1)
     await ns.sleep(100)
     ns.tprint(`[${localeHHMMSS()}] Spawning stockMarketer.ns`)
-    ns.spawn('stock-master.ns',1)
+    ns.spawn('stockMarketer.ns',1)
     await ns.sleep(100)
     ns.tprint(`[${localeHHMMSS()}] Spawning hacknet-auto.ns`)
     ns.spawn('hacknet-auto.script',1)
