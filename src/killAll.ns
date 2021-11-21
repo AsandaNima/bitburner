@@ -15,7 +15,7 @@ const scriptsToKill = [
   'initHacking.ns',
   'start.ns',
   'find.ns',
-  'stock-master.ns',
+  'stockMarketer.ns',
   'hacknet-auto.script',
 ]
 
