@@ -122,10 +122,10 @@ function findTargetServer(ns, serversList, servers, serverExtraData) {
     .filter((hostname) => servers[hostname].hackingLevel <= playerDetails.hackingLevel)
     .filter((hostname) => servers[hostname].maxMoney)
     .filter((hostname) => hostname !== 'home')
-    .filter((hostname) => ((...a)=>ns.getWeakenTime(...a)/1000)(hostname) < settings.maxWeakenTime)
+    .filter((hostname) => ns.getWeakenTime(hostname) < settings.maxWeakenTime)
 
   let weightedServers = serversList.map((hostname) => {
-    const fullHackCycles = Math.ceil(100 / Math.max(0.00000001, ((...a)=>ns.hackAnalyze(...a)*100)(hostname)))
+    const fullHackCycles = Math.ceil(100 / Math.max(0.00000001, ns.hackAnalyze(hostname)/100))
 
     serverExtraData[hostname] = {
       fullHackCycles,
@@ -176,12 +176,12 @@ export async function main(ns) {
 
     const targetServers = findTargetServer(ns, hackableServers, serverMap.servers, serverExtraData)
     const bestTarget = targetServers.shift()
-    const hackTime = ((...a)=>ns.getHackTime(...a)/1000)(bestTarget) * 1000
-    const growTime = ((...a)=>ns.getGrowTime(...a)/1000)(bestTarget) * 1000
-    const weakenTime = ((...a)=>ns.getWeakenTime(...a)/1000)(bestTarget) * 1000
+    const hackTime = ns.getHackTime(bestTarget)
+    const growTime = ns.getGrowTime(bestTarget)
+    const weakenTime = ns.getWeakenTime(bestTarget)
 
-    const growDelay = Math.max(0, weakenTime - growTime - 15 * 1000)
-    const hackDelay = Math.max(0, growTime + growDelay - hackTime - 15 * 1000)
+    const growDelay = Math.max(0, weakenTime - growTime - 15 )
+    const hackDelay = Math.max(0, growTime + growDelay - hackTime - 15)
 
     const securityLevel = ns.getServerSecurityLevel(bestTarget)
     const money = ns.getServerMoneyAvailable(bestTarget)
